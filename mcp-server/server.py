@@ -91,5 +91,4 @@ def get_market_news(query: str, toolCallId: str = None, ticker: str = None) -> s
         return f"Error fetching news: {str(e)}"
 
 if __name__ == "__main__":
-    # We run on port 8000
-    mcp.run(transport="sse", port=8000)
+    mcp.run(transport="sse", host="0.0.0.0", port=8000)

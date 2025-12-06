@@ -9,6 +9,8 @@ cd ai-market-analyst
 
 cp .env.example .env
 # edit .env and add your API keys
+
+docker-compose up --build
 ```
 
 

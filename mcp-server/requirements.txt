@@ -1,0 +1,4 @@
+fastmcp
+yfinance
+newsapi-python
+uvicorn

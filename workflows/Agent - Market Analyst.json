@@ -1,0 +1,726 @@
+{
+  "name": "Agent - Market Analyst",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "market-analyst",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        -96
+      ],
+      "id": "0baa6ebc-c2ff-4950-abbc-dbeb65059095",
+      "name": "Webhook",
+      "webhookId": "32b09981-1048-42dd-83ef-62fee0bce92b"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the stock ticker from the user query.\nReturn ONLY the ticker symbol, with no extra text.\n\nUser Query:\n{{ $json.body.question }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -192,
+        -96
+      ],
+      "id": "9793a20c-2e6e-4efb-8094-4e161d3456a2",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        112
+      ],
+      "id": "34f73177-32d4-4ebb-9d65-3667834a5294",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "NLOEanbgjU5El9lJ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3ddf437-f8ff-406f-ae73-26aa1937450a",
+              "name": "ticker",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        -96
+      ],
+      "id": "1612a1ac-c696-425b-a635-a7d05283f079",
+      "name": "Set Ticker"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=When calling tools:\n\n- For get_stock_price use:\n  { \"ticker\": \"{{ $('Set Ticker').item.json.ticker }}\" }\n\n- For get_market_news use:\n  { \"query\": \"{{ $('Set Ticker').item.json.ticker }}\" }\n\nCall each tool at most once.\nReturn only the raw outputs.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        336,
+        -96
+      ],
+      "id": "721dcc57-b6f6-458a-88e9-233698c211fc",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        336,
+        144
+      ],
+      "id": "9e311c08-1029-440a-8953-a125acbefeb6",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "NLOEanbgjU5El9lJ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://mcp-server:8000/sse",
+        "serverTransport": "sse",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        144
+      ],
+      "id": "775a1e5d-c192-432c-b843-c7569b31bf06",
+      "name": "MCP Client"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        864,
+        -80
+      ],
+      "id": "ae561a0a-f1d5-48cf-b11c-242a5fea06e1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "127975d8-eaa4-47cc-9aa7-24d7fadcf1c6",
+              "name": "body",
+              "value": "={   \"question\": \"What are the specific risk factors for {{ $json.ticker }} in the latest 10-K?\" }",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        368
+      ],
+      "id": "8b9f5911-cfcd-403b-8bde-d9d434d39fc5",
+      "name": "Build RAG Input"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Senior Investment Analyst. Synthesize the following data into a recommendation.\n\nMarket Data:\n{{ $json.output }}\n\nLegal Risks:\n{{ $json.response }}\n\nTask:\n\nCompare the stock's performance to the risks.\n\nProvide a verdict: BUY, HOLD, or SELL.\n\nList 3 key reasons.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1088,
+        -80
+      ],
+      "id": "42dbe642-f028-4f94-888c-3a468d9251f9",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        80
+      ],
+      "id": "56568da1-32bf-4f13-bade-908d5153d072",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "NLOEanbgjU5El9lJ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "3W9dKbgl7xfCG8nv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/3W9dKbgl7xfCG8nv",
+          "cachedResultName": "Tool - RAG Search"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        368
+      ],
+      "id": "00c993ac-fc47-46b4-a7ba-24210ad75a70",
+      "name": "Call 'Tool - RAG Search'"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2cb4d31a-ff6a-424e-a23b-1b5f5cb1e4c9"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        336,
+        0
+      ],
+      "id": "45b9268c-4594-4236-b54d-7f1ac43fb3a9",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "BUY",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "d09fff96-e42e-4e70-a3aa-d55c8b28f76f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "641c83c1-d575-4eb1-b711-3382f675045b",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "SELL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1392,
+        -80
+      ],
+      "id": "ae2d8b59-1512-418d-99c4-0e2a2108acbb",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "284fa6cc-4bf2-4d51-8bbc-6b639cfdbe04",
+              "name": "action",
+              "value": "BUY",
+              "type": "string"
+            },
+            {
+              "id": "860d4f97-86de-4c2d-bd50-2aea4c0c486a",
+              "name": "reasoning",
+              "value": "={{ $('Basic LLM Chain1').item.json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1616,
+        -176
+      ],
+      "id": "6f84ccf2-c468-48b0-9eb1-43c92c90d79b",
+      "name": "Buy"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "54d0df96-4a75-4436-a94f-3e4272877c58",
+              "name": "action",
+              "value": "SELL",
+              "type": "string"
+            },
+            {
+              "id": "b7c84e47-d200-47b8-b762-05f77946c91f",
+              "name": "reasoning",
+              "value": "={{ $('Basic LLM Chain1').item.json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1616,
+        16
+      ],
+      "id": "16cfd9aa-b8d7-4632-accb-09f9df714a88",
+      "name": "Sell"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2128,
+        -96
+      ],
+      "id": "a920c100-38d5-481f-949f-35e5b4d2817d",
+      "name": "Wait",
+      "webhookId": "2f34d54a-2b60-4c2a-8e21-58a983f70493"
+    },
+    {
+      "parameters": {
+        "sendTo": "thushar.gokusujir@gmail.com",
+        "subject": "=Approval Needed: {{ $('Set Ticker').item.json.ticker }}",
+        "message": "=A trade has been recommended.  Ticker: {{ $('Set Ticker').item.json.ticker }} Action: {{ $json.action }}  Reasoning: {{ $json.reasoning }}  Click the link below to approve this trade: {{ $execution.resumeUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1872,
+        -96
+      ],
+      "id": "7102392b-23ac-47fc-9386-a011f83c28dc",
+      "name": "Send a message",
+      "webhookId": "c0706abc-c8b1-47ac-be97-0d7769021070",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cggY5ipRyvaabVrg",
+          "name": "Gmail account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1YCTy1SymHNrd8WTf2Ba4uzE2Fd5qPmcLBQFxxIK-0ek",
+          "mode": "list",
+          "cachedResultName": "AI Trade Ledger",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCTy1SymHNrd8WTf2Ba4uzE2Fd5qPmcLBQFxxIK-0ek/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCTy1SymHNrd8WTf2Ba4uzE2Fd5qPmcLBQFxxIK-0ek/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now }}",
+            "Ticker": "={{ $('Set Ticker').item.json.ticker }}",
+            "Action": "={{ $('Buy').item.json.action || $('Sell').item.json.action }}",
+            "Reasoning": "={{ $('Buy').item.json.reasoning || $('Sell').item.json.reasoning }}",
+            "Status": "Approved"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ticker",
+              "displayName": "Ticker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action",
+              "displayName": "Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reasoning",
+              "displayName": "Reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2336,
+        -96
+      ],
+      "id": "a3001fd0-18fa-42fe-a85d-721b10f72614",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "UH1Wi4cAiQphxR7J",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Set Ticker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Ticker": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build RAG Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build RAG Input": {
+      "main": [
+        [
+          {
+            "node": "Call 'Tool - RAG Search'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Tool - RAG Search'": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Buy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sell": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buy": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "198f1202-b4a0-4eab-a76c-b4dd93cda3c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5b26e4ae6bce09b908a2dfb0202cb4afaa17c7915ab8b823755108728239528f"
+  },
+  "id": "zY6VTD3RnsPfE39B",
+  "tags": []
+}
